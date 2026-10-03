@@ -300,7 +300,12 @@ impl Xml {
             _ => "LINUX",
         };
 
-        xmlcmd_e!(self, port, SetRuntimeParameter, log_level, channel, system_os)?;
+        // DA1 may need longer than MIN_TIMEOUT to send its first CMD:START
+        port.set_timeout(MAX_TIMEOUT)?;
+        let first = xmlcmd_e!(self, port, SetRuntimeParameter, log_level, channel, system_os);
+        port.set_timeout(MIN_TIMEOUT)?;
+        first?;
+        xmlcmd_e!(self, port, HostSupportedCommands).ok();
         xmlcmd_e!(self, port, HostSupportedCommands).ok();
         xmlcmd_e!(self, port, SetHostInfo, format!("Penumbra v{}", VERSION))?;
 
