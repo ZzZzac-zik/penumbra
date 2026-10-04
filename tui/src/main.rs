@@ -31,6 +31,10 @@ use crate::config::AntumbraConfig;
 fn main() -> Result<()> {
     let args = CliArgs::parse();
 
+    // Allow forcing DA patching on devices that report SBC/DAA/SLA as enabled.
+    // DA1 -> DA2 validation is a hash, which `patch_da()` recomputes.
+    penumbra::exploit::set_force_da_patch(args.force_da_patch);
+
     #[cfg(all(windows, feature = "tui"))]
     let tui = args.tui || !cli_or_gui::is_launched_from_terminal();
 

@@ -112,6 +112,14 @@ pub struct CliArgs {
     /// Enable USB DA logging
     #[arg(long = "usb-log", global = true, help_heading = "Device & Connection Options")]
     pub usb_log: bool,
+    /// Force DA patching even when the device reports SBC/DAA/SLA as enabled.
+    ///
+    /// DA1 validates DA2 with a hash (recomputed by penumbra when patching), so
+    /// a patched DA can still be accepted on fused devices as long as the
+    /// device accepts the modified DA1. Lets you test whether DAA/SBC are
+    /// really enforced and unlock the DA extension commands (RPMB, SEJ, peek).
+    #[arg(long = "force-da-patch", global = true, help_heading = "Device & Connection Options")]
+    pub force_da_patch: bool,
     /// Subcommands for CLI mode. If provided, TUI mode will be disabled.
     #[command(subcommand)]
     pub command: Option<Commands>,
