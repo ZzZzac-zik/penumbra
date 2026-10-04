@@ -57,7 +57,7 @@ use crate::da::{DaLogLevel, DaProtocolParams};
 use crate::error::PenumbraError;
 use crate::error::{AuthError, ProtocolError, XmlError, XmlErrorKind};
 #[cfg(feature = "exploits")]
-use crate::exploit::{Carbonara, HeapBait, Unfused};
+use crate::exploit::{Carbonara, HeapBait, Unfused, XmlBait};
 use crate::port::{MAX_TIMEOUT, MIN_TIMEOUT, MtkPort};
 use crate::storage::Partitions;
 use crate::traits::{
@@ -639,6 +639,14 @@ impl DownloadProtocol for Xml {
         result?;
 
         exploit!(HeapBait, self, port, da);
+
+        // Experimental on-device probe for the DA2 XML filename escape
+        // overflow (see core/src/exploit/xmlbait.rs). Only runs when
+        // XMLBAIT=1 is set, and never claims the DA as patched.
+        #[cfg(feature = "exploits")]
+        if crate::exploit::xmlbait_enabled() {
+            exploit!(XmlBait, self, port, da);
+        }
 
         self.handle_sla(port, da)?;
 
