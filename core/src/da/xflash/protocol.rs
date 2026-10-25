@@ -175,6 +175,7 @@ impl XFlash {
         if length < 4 {
             return Err(ProtocolError::InvalidResponseLength.into());
         }
+
         let len = usize::try_from(length).map_err(|_| PenumbraError::BufferTooSmall)?;
         let mut payload = Vec::with_capacity(len);
         payload.resize(len, 0);
@@ -222,6 +223,9 @@ impl XFlash {
 
         info!("Uploading XFlash DA1 to address 0x{:08X} with length 0x{:X}", da1_addr, da1_length);
 
+        /* Some DAs might take a bit longer during `platform_init` */
+        port.set_timeout(MAX_TIMEOUT)?;
+
         let mut pl = PlProtocol::new(port);
 
         pl.send_da(da1_data, da1_length as u32, da1_addr, da1_sig_len as u32)?;
@@ -229,6 +233,8 @@ impl XFlash {
         pl.jump_da(da1_addr)?;
 
         let sync_byte = port.read_u8()?;
+
+        port.set_timeout(MIN_TIMEOUT)?;
 
         if sync_byte != 0xC0 {
             return Err(ProtocolError::InvalidSyncByte.into());
