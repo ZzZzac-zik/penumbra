@@ -49,7 +49,7 @@ impl DeviceCommand for PeekArgs {
         let file = File::create(&self.output_file)?;
         let mut writer = BufWriter::new(file);
 
-        let pb = AntumbraProgress::new(self.length as u64);
+        let pb = AntumbraProgress::new(self.length);
 
         let mut progress_callback = pb.get_callback("Peeking...", "Peek complete!");
 

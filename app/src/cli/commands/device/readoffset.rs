@@ -56,7 +56,7 @@ impl DeviceCommand for ReadOffArgs {
 
         let user_section = dev.get_storage().unwrap().get_user_part();
 
-        let pb = AntumbraProgress::new(self.length as u64);
+        let pb = AntumbraProgress::new(self.length);
 
         let mut progress_callback = pb.get_callback("Reading...", "Read complete!");
 
