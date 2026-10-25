@@ -65,7 +65,7 @@ pub struct DeviceBuilder<'a, P: MtkPort> {
     /// Preloader data to use for the device. This field is optional.
     /// If provided, it can be used to extract EMI settings or other information.
     /// Only needed if told to do so, like when the device is in BROM mode.
-    preloader_data: Option<&'a [u8]>,
+    preloader_data: Vec<u8>,
     /// Authentication data for DAA enabled devices. This field is optional.
     /// If the device has DAA enabled and is in BROM mode, this data will be
     /// sent during initialization to be able to load the DA.
@@ -88,7 +88,7 @@ impl<'a, P: MtkPort> DeviceBuilder<'a, P> {
         Self {
             mtk_port: port,
             da_data: None,
-            preloader_data: None,
+            preloader_data: vec![],
             auth_data: None,
             da_log_level: DaLogLevel::Info,
             usb_log_channel: false,
@@ -104,8 +104,8 @@ impl<'a, P: MtkPort> DeviceBuilder<'a, P> {
     }
 
     /// Assigns the preloader data to be used for the device.
-    pub const fn with_preloader(mut self, data: &'a [u8]) -> Self {
-        self.preloader_data = Some(data);
+    pub fn with_preloader(mut self, data: &'a [u8]) -> Self {
+        self.preloader_data = data.to_vec();
         self
     }
 
@@ -149,9 +149,10 @@ impl<'a, P: MtkPort> DeviceBuilder<'a, P> {
             Some(data) => Some(Da::try_read(data)?),
             None => None,
         };
-        let pl = match self.preloader_data {
-            Some(data) => Some(Preloader::try_read(data)?),
-            None => None,
+
+        let pl = match Preloader::try_read(&self.preloader_data) {
+            Ok(_) => self.preloader_data,
+            Err(_) => vec![],
         };
 
         Ok(Device {
@@ -173,14 +174,14 @@ impl<'a, P: MtkPort> DeviceBuilder<'a, P> {
 pub struct Device<'a, P: MtkPort> {
     port: P,
     da: Option<Da<'a>>,
-    pl: Option<Preloader<'a>>,
+    pl: Vec<u8>,
     auth_data: Option<&'a [u8]>,
     devinfo: DevInfo,
     da_log_level: DaLogLevel,
     usb_log_channel: bool,
     device_log: DeviceLog,
     activity: DeviceActivity,
-    protocol: Option<DaProtocol<'a>>,
+    protocol: Option<DaProtocol>,
     connected: bool,
 }
 
@@ -418,7 +419,7 @@ impl<'a, P: MtkPort> Device<'a, P> {
         Ok(entry)
     }
 
-    fn init_da_protocol(&mut self) -> Result<DaProtocol<'a>> {
+    fn init_da_protocol(&mut self) -> Result<DaProtocol> {
         let da_entry = Self::get_da_entry(self.da.as_ref(), self.devinfo())?;
 
         let da_type = da_entry.version();
@@ -429,7 +430,7 @@ impl<'a, P: MtkPort> Device<'a, P> {
             activity: self.activity.clone(),
             log_level: self.da_log_level,
             usb_log_channel: self.usb_log_channel,
-            preloader: self.pl.take(),
+            preloader: std::mem::take(&mut self.pl),
         };
 
         let protocol = match da_type {
@@ -469,7 +470,7 @@ impl<'a, P: MtkPort> Device<'a, P> {
     }
 
     /// Returns a mutable reference to the initialized DA protocol, if available.
-    pub const fn get_protocol(&mut self) -> Option<&mut DaProtocol<'a>> {
+    pub const fn get_protocol(&mut self) -> Option<&mut DaProtocol> {
         self.protocol.as_mut()
     }
 
@@ -507,7 +508,7 @@ impl<'a, P: MtkPort> Device<'a, P> {
     /// ```
     pub fn with_protocol<F, R>(&mut self, f: F) -> Result<R>
     where
-        F: FnOnce(&mut DaProtocol<'a>, &mut P) -> Result<R>,
+        F: FnOnce(&mut DaProtocol, &mut P) -> Result<R>,
     {
         let port = &mut self.port;
         let proto = self.protocol.as_mut().ok_or(PenumbraError::ProtocolNotInitialized)?;

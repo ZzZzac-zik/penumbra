@@ -106,7 +106,7 @@ pub struct Xml {
 }
 
 impl Xml {
-    pub fn new(params: DaProtocolParams<'_>) -> Self {
+    pub fn new(params: DaProtocolParams) -> Self {
         Self {
             write_packed_length: None,
             #[cfg(feature = "exploits")]

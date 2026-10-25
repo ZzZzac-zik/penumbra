@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use enum_dispatch::enum_dispatch;
-use hacc::{DaEntry, Preloader};
+use hacc::DaEntry;
 use penumbra_macros::ToBytes;
 use wincode::{Deserialize, SchemaRead, SchemaWrite};
 
@@ -98,19 +98,19 @@ impl FromBytes for PacketHeader {
 }
 
 #[non_exhaustive]
-pub struct DaProtocolParams<'a> {
+pub struct DaProtocolParams {
     pub devinfo: DevInfo,
     pub device_log: DeviceLog,
     pub activity: DeviceActivity,
     pub log_level: DaLogLevel,
     pub usb_log_channel: bool,
-    pub preloader: Option<Preloader<'a>>,
+    pub preloader: Vec<u8>,
 }
 
 #[enum_dispatch(DownloadProtocol)]
 #[enum_dispatch(DownloadProtocolExt)]
-pub enum DaProtocol<'a> {
-    V5(XFlash<'a>),
+pub enum DaProtocol {
+    V5(XFlash),
     V6(Xml),
 }
 

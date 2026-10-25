@@ -4,9 +4,9 @@
 */
 use std::time::Duration;
 
-use hacc::{DaEntry, Preloader};
 #[cfg(feature = "exploits")]
-use hacc::{TryRead, TryWrite};
+use hacc::TryWrite;
+use hacc::{DaEntry, Preloader, TryRead};
 use log::{debug, error, info, trace};
 
 use crate::activity::{Activity, DeviceActivity};
@@ -53,8 +53,8 @@ use crate::traits::{
 use crate::utils::hash::{HashType, hash};
 use crate::{AuthManager, DeviceLog, Error, Result, SignData, SignPurpose, SignRequest};
 
-pub struct XFlash<'a> {
-    pub pl: Option<Preloader<'a>>,
+pub struct XFlash {
+    pub pl: Vec<u8>,
     pub(super) read_packet_length: Option<usize>,
     pub(super) write_packet_length: Option<usize>,
     #[cfg(feature = "exploits")]
@@ -67,11 +67,11 @@ pub struct XFlash<'a> {
     pub(super) activity: DeviceActivity,
 }
 
-impl<'a> XFlash<'a> {
+impl XFlash {
     const PROGRESS_COMPLETE: u32 = 0x40040005;
     const PROGRESS_TICK: u32 = 0x40040004;
 
-    pub fn new(params: DaProtocolParams<'a>) -> Self {
+    pub fn new(params: DaProtocolParams) -> Self {
         XFlash {
             pl: params.preloader,
             devinfo: params.devinfo,
@@ -285,15 +285,17 @@ impl<'a> XFlash<'a> {
             return Ok(());
         }
 
-        let pl = self.pl.as_ref().ok_or(ProtocolError::PreloaderNeeded)?;
-
-        let emi = pl.emi().ok_or(ProtocolError::EmiNotFound)?;
+        let emi = Preloader::try_read(&self.pl)
+            .map_err(|_| ProtocolError::PreloaderNeeded)?
+            .emi()
+            .ok_or(ProtocolError::EmiNotFound)?
+            .to_vec();
 
         port.set_timeout(MAX_TIMEOUT)?;
 
         info!("Uploading EMI settings to device...");
         self.send_cmd(port, Cmd::InitExtRam)?;
-        let result = self.send_data(port, &[&(emi.len() as u32).to_le_bytes(), emi]);
+        let result = self.send_data(port, &[&(emi.len() as u32).to_le_bytes(), &emi]);
 
         port.set_timeout(MIN_TIMEOUT)?;
 
@@ -378,7 +380,7 @@ impl<'a> XFlash<'a> {
     }
 }
 
-impl<'a> DownloadProtocol for XFlash<'a> {
+impl DownloadProtocol for XFlash {
     fn upload_da<P: MtkPort>(&mut self, port: &mut P, da: &mut DaEntry) -> Result<()> {
         exploit!(Unfused, self, port, da);
         exploit!(Linecode, self, port, da);
@@ -894,7 +896,7 @@ impl<'a> DownloadProtocol for XFlash<'a> {
 }
 
 #[cfg(feature = "exploits")]
-impl<'a> DownloadProtocolExt for XFlash<'a> {
+impl DownloadProtocolExt for XFlash {
     fn set_seccfg_lock_state<P: MtkPort>(
         &mut self,
         port: &mut P,
