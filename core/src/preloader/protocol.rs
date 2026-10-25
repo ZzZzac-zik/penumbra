@@ -392,7 +392,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         self.port.write_all(data)?;
 
-        let checksum = data.iter().fold(0u32, |acc, &x| acc.wrapping_add(x as u32)) & 0xFFFFFFFF;
+        let checksum = data.iter().fold(0u32, |acc, &x| acc.wrapping_add(x as u32));
         self.port.write_u32_be(checksum)?;
 
         /* Thanks MTK for not adding a status check here */

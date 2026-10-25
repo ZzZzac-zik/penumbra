@@ -170,8 +170,7 @@ impl Xml {
         }
 
         let len = usize::try_from(length).map_err(|_| PenumbraError::BufferTooSmall)?;
-        let mut payload = Vec::with_capacity(len);
-        payload.resize(len, 0);
+        let mut payload = vec![0; len];
         port.read_exact(&mut payload)?;
 
         let body = String::from_utf8_lossy(&payload[4..]).into_owned();
@@ -665,8 +664,7 @@ impl DownloadProtocol for Xml {
         }
 
         let len = usize::try_from(hdr.length).map_err(|_| PenumbraError::BufferTooSmall)?;
-        let mut data = Vec::with_capacity(len);
-        data.resize(len, 0);
+        let mut data = vec![0; len];
         port.read_exact(&mut data)?;
         Ok(data)
     }
