@@ -3,12 +3,12 @@ use proc_macro::TokenStream;
 mod bytes;
 mod xml_cmd;
 
-#[proc_macro_derive(ToBytes)]
+#[proc_macro_derive(ToBytes, attributes(bytes))]
 pub fn derive_to_bytes(input: TokenStream) -> TokenStream {
     bytes::derive_to_bytes(input)
 }
 
-#[proc_macro_derive(FromBytes)]
+#[proc_macro_derive(FromBytes, attributes(bytes))]
 pub fn derive_from_bytes(input: TokenStream) -> TokenStream {
     bytes::derive_from_bytes(input)
 }
