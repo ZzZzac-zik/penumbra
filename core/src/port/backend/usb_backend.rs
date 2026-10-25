@@ -29,6 +29,8 @@ const BULK_OUT_SZ: usize = 0x80000;
 
 pub struct UsbMTKPort {
     info: DeviceInfo,
+    device: Option<Device>,
+    ctrl_num: u8,
     interface: Option<Interface>,
     ctrl_interface: Option<Interface>,
     reader: Option<EndpointRead<Bulk>>,
@@ -52,6 +54,8 @@ impl UsbMTKPort {
     pub const fn new(info: DeviceInfo, conn_type: ConnectionType) -> Self {
         Self {
             info,
+            device: None,
+            ctrl_num: 0,
             interface: None,
             ctrl_interface: None,
             writer: None,
@@ -98,44 +102,65 @@ impl UsbMTKPort {
         Err(Error::Connection(ConnectionError::InterfaceNotFound))
     }
 
-    fn setup_cdc(&self) -> Result<()> {
-        let iface = self.ctrl_interface.as_ref().ok_or(ConnectionError::PortNotOpen)?;
+    fn control_out(
+        &self,
+        data: ControlOut,
+        timeout: Duration,
+    ) -> std::result::Result<(), nusb::transfer::TransferError> {
+        match (&self.ctrl_interface, &self.device) {
+            (Some(iface), _) => iface.control_out(data, timeout).wait(),
+            #[cfg(not(windows))]
+            (None, Some(dev)) => dev.control_out(data, timeout).wait(),
+            _ => Err(nusb::transfer::TransferError::Disconnected),
+        }
+    }
 
-        const CDC_INTERFACE_NUM: u16 = 0;
+    fn control_in(
+        &self,
+        data: ControlIn,
+        timeout: Duration,
+    ) -> std::result::Result<Vec<u8>, nusb::transfer::TransferError> {
+        match (&self.ctrl_interface, &self.device) {
+            (Some(iface), _) => iface.control_in(data, timeout).wait(),
+            #[cfg(not(windows))]
+            (None, Some(dev)) => dev.control_in(data, timeout).wait(),
+            _ => Err(nusb::transfer::TransferError::Disconnected),
+        }
+    }
+
+    fn setup_cdc(&self) -> Result<()> {
+        // The control interface the device declares, not necessarily 0.
+        let cdc_interface_num = self.ctrl_num as u16;
         const SET_LINE_CODING: u8 = 0x20;
         const SET_CONTROL_LINE_STATE: u8 = 0x22;
-        const LINE_CODING: [u8; 7] = [0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08];
+        const LINE_CODING: [u8; 7] = [0x00, 0x10, 0x0E, 0x00, 0x00, 0x00, 0x08];
         const CONTROL_LINE_STATE: u16 = 0x03; // DTR | RTS
 
-        iface
-            .control_out(
-                ControlOut {
-                    control_type: ControlType::Class,
-                    recipient: Recipient::Interface,
-                    request: SET_LINE_CODING,
-                    value: 0,
-                    index: CDC_INTERFACE_NUM,
-                    data: &LINE_CODING,
-                },
-                MIN_TIMEOUT,
-            )
-            .wait()
-            .map_err(|_| ConnectionError::CdcSetupFailed)?;
+        self.control_out(
+            ControlOut {
+                control_type: ControlType::Class,
+                recipient: Recipient::Interface,
+                request: SET_LINE_CODING,
+                value: 0,
+                index: cdc_interface_num,
+                data: &LINE_CODING,
+            },
+            MIN_TIMEOUT,
+        )
+        .map_err(|_| ConnectionError::CdcSetupFailed)?;
 
-        iface
-            .control_out(
-                ControlOut {
-                    control_type: ControlType::Class,
-                    recipient: Recipient::Interface,
-                    request: SET_CONTROL_LINE_STATE,
-                    value: CONTROL_LINE_STATE,
-                    index: CDC_INTERFACE_NUM,
-                    data: &[],
-                },
-                MIN_TIMEOUT,
-            )
-            .wait()
-            .map_err(|_| ConnectionError::CdcSetupFailed)?;
+        self.control_out(
+            ControlOut {
+                control_type: ControlType::Class,
+                recipient: Recipient::Interface,
+                request: SET_CONTROL_LINE_STATE,
+                value: CONTROL_LINE_STATE,
+                index: cdc_interface_num,
+                data: &[],
+            },
+            MIN_TIMEOUT,
+        )
+        .map_err(|_| ConnectionError::CdcSetupFailed)?;
 
         debug!("CDC Setup complete");
         Ok(())
@@ -190,7 +215,14 @@ impl MtkPort for UsbMTKPort {
 
         let (ctrl_num, bulk_num) = Self::find_cdc_interface_numbers(&device)?;
 
-        self.ctrl_interface = Some(device.detach_and_claim_interface(ctrl_num).wait()?);
+        self.ctrl_interface = match device.detach_and_claim_interface(ctrl_num).wait() {
+            Ok(i) => Some(i),
+            Err(e) => {
+                debug!("CDC control interface {ctrl_num} not claimed ({e})");
+                None
+            }
+        };
+        self.ctrl_num = ctrl_num;
         let bulk_iface = device.detach_and_claim_interface(bulk_num).wait()?;
 
         self.select_endpoints(&bulk_iface)?;
@@ -213,6 +245,7 @@ impl MtkPort for UsbMTKPort {
         );
 
         self.interface = Some(bulk_iface);
+        self.device = Some(device);
 
         if self.conn_type != ConnectionType::Brom
             && let Err(e) = self.setup_cdc()
@@ -233,6 +266,8 @@ impl MtkPort for UsbMTKPort {
         self.reader = None;
         self.writer = None;
         self.interface = None;
+        self.ctrl_interface = None;
+        self.device = None;
         self.is_open = false;
 
         Ok(())
@@ -342,8 +377,6 @@ impl MtkPort for UsbMTKPort {
         index: u16,
         data: &[u8],
     ) -> Result<()> {
-        let iface = self.ctrl_interface.as_ref().ok_or(ConnectionError::PortNotOpen)?;
-
         let control_type = match (request_type >> 5) & 0b11 {
             0 => ControlType::Standard,
             1 => ControlType::Class,
@@ -358,13 +391,11 @@ impl MtkPort for UsbMTKPort {
             _ => Recipient::Other,
         };
 
-        iface
-            .control_out(
-                ControlOut { control_type, recipient, request, value, index, data },
-                Duration::from_secs(1),
-            )
-            .wait()
-            .map_err(|_| ConnectionError::CtrlTransferOutFailed)?;
+        self.control_out(
+            ControlOut { control_type, recipient, request, value, index, data },
+            Duration::from_secs(1),
+        )
+        .map_err(|_| ConnectionError::CtrlTransferOutFailed)?;
 
         Ok(())
     }
@@ -377,8 +408,6 @@ impl MtkPort for UsbMTKPort {
         index: u16,
         len: usize,
     ) -> Result<Vec<u8>> {
-        let iface = self.ctrl_interface.as_ref().ok_or(ConnectionError::PortNotOpen)?;
-
         let control_type = match (request_type >> 5) & 0b11 {
             0 => ControlType::Standard,
             1 => ControlType::Class,
@@ -393,12 +422,11 @@ impl MtkPort for UsbMTKPort {
             _ => Recipient::Other,
         };
 
-        let buf = iface
+        let buf = self
             .control_in(
                 ControlIn { control_type, recipient, request, value, index, length: len as u16 },
                 Duration::from_secs(1),
             )
-            .wait()
             .map_err(|_| ConnectionError::CtrlTransferInFailed)?;
 
         Ok(buf)
