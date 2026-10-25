@@ -13,6 +13,27 @@ trait_set! {
     pub trait WriterSink<W: Writer> = FnMut(&str) -> crate::Result<W> + Send;
 }
 
+pub(crate) type Le = wincode::config::Configuration<
+    true,
+    { wincode::config::DEFAULT_PREALLOCATION_SIZE_LIMIT },
+    wincode::len::BincodeLen,
+    wincode::int_encoding::LittleEndian,
+    wincode::int_encoding::FixInt,
+    u32,
+>;
+
+pub(crate) type Be = wincode::config::Configuration<
+    true,
+    { wincode::config::DEFAULT_PREALLOCATION_SIZE_LIMIT },
+    wincode::len::BincodeLen,
+    wincode::int_encoding::BigEndian,
+    wincode::int_encoding::FixInt,
+    u32,
+>;
+
+pub(crate) const LE: Le = Le::new();
+pub(crate) const BE: Be = Be::new();
+
 pub trait ToBytes {
     const SIZE: usize;
 

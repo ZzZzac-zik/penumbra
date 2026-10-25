@@ -2,7 +2,7 @@
     SPDX-License-Identifier: AGPL-3.0-or-later
     SPDX-FileCopyrightText: 2025-2026 Shomy
 */
-use wincode::{Deserialize, SchemaRead, SchemaWrite};
+use wincode::{SchemaRead, SchemaWrite};
 
 use crate::error::Result;
 use crate::storage::{PartitionKind, Storage, StorageType};

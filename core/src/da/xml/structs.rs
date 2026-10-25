@@ -3,7 +3,7 @@
     SPDX-FileCopyrightText: 2026 Shomy
 */
 
-use wincode::{Deserialize, SchemaRead, SchemaWrite};
+use wincode::{SchemaRead, SchemaWrite};
 
 use crate::traits::{FromBytes, ToBytes};
 
