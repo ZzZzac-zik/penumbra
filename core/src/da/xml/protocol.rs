@@ -1004,26 +1004,14 @@ impl DownloadProtocolExt for Xml {
     ) -> Result<()> {
         use extensions::SecCfgAlgo;
 
-        let section = self
-            .get_storage(port)
-            .as_ref()
-            .map(|s| s.get_user_part())
-            .ok_or(ProtocolError::CannotGetStorageInfo)?;
-
-
         let seccfg_part = self
             .get_partition("seccfg")
             .ok_or_else(|| PenumbraError::PartitionNotFound("seccfg".into()))?;
 
         let mut seccfg_data = vec![0u8; seccfg_part.size as usize];
-        self.read_partition(
-            port,
-            &seccfg_part.name,
-            seccfg_data.as_mut_slice(),
-            NOOP_PROGRESS,
-        )?;
+        self.read_partition(port, &seccfg_part.name, seccfg_data.as_mut_slice(), NOOP_PROGRESS)?;
         seccfg_data.resize(0x200, 0);
-        
+
         let mut seccfg = hacc::SecCfgV4::try_read(&seccfg_data)?;
 
         if seccfg.lock_state() == state {
