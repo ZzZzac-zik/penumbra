@@ -17,6 +17,7 @@ pub struct PlProtocol<'a, P: MtkPort> {
 }
 
 impl<'a, P: MtkPort> PlProtocol<'a, P> {
+    const DRAIN_TIMEOUT: Duration = Duration::from_millis(50);
     const SEQ: [u8; 4] = [0xA0, 0x0A, 0x50, 0x05];
 
     pub const fn new(port: &'a mut P) -> Self {
@@ -53,6 +54,9 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         for attempt in 1..=retries {
             match self.handshake_seq() {
                 Ok(()) => {
+                    self.port.set_timeout(Self::DRAIN_TIMEOUT)?;
+                    while self.port.read_u8().is_ok() {}
+
                     self.port.set_timeout(MIN_TIMEOUT)?;
                     info!("Handshake completed!");
                     return Ok(());
@@ -64,7 +68,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
                     // We drain the USB port from any stale data in the buffer.
                     // Just to be sure, we also read u8s until we get a timeout,
                     // as sometimes flush might not be enough.
-                    self.port.set_timeout(Duration::from_millis(50))?;
+                    self.port.set_timeout(Self::DRAIN_TIMEOUT)?;
                     while self.port.read_u8().is_ok() {}
                     self.port.set_timeout(MAX_TIMEOUT)?;
 
