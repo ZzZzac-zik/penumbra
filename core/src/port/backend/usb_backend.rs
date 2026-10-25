@@ -24,9 +24,6 @@ use crate::port::{
     PORT_RETRY_INTERVAL,
 };
 
-const BULK_IN_SZ: usize = 0x80000;
-const BULK_OUT_SZ: usize = 0x80000;
-
 pub struct UsbMTKPort {
     info: DeviceInfo,
     device: Option<Device>,
@@ -51,6 +48,9 @@ impl fmt::Debug for UsbMTKPort {
 }
 
 impl UsbMTKPort {
+    const BULK_IN_SZ: usize = 0x80000;
+    const BULK_OUT_SZ: usize = 0x80000;
+
     pub const fn new(info: DeviceInfo, conn_type: ConnectionType) -> Self {
         Self {
             info,
@@ -226,21 +226,18 @@ impl MtkPort for UsbMTKPort {
         let bulk_iface = device.detach_and_claim_interface(bulk_num).wait()?;
 
         self.select_endpoints(&bulk_iface)?;
-        let tr = if cfg!(windows) { 1 } else { 8 };
 
         self.reader = Some(
             bulk_iface
                 .endpoint::<Bulk, In>(self.ep_in)?
-                .reader(BULK_IN_SZ)
-                .with_num_transfers(tr)
+                .reader(Self::BULK_IN_SZ)
                 .with_read_timeout(MIN_TIMEOUT),
         );
 
         self.writer = Some(
             bulk_iface
                 .endpoint::<Bulk, Out>(self.ep_out)?
-                .writer(BULK_OUT_SZ)
-                .with_num_transfers(tr)
+                .writer(Self::BULK_OUT_SZ)
                 .with_write_timeout(MIN_TIMEOUT),
         );
 
