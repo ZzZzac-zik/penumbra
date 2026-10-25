@@ -5,7 +5,7 @@
 
 macro_rules! status {
     ($self:ident, $expected:expr) => {{
-        let status = $self.read_u16_be()?;
+        let status = $self.port.read_u16_be()?;
         if status != $expected {
             let err = crate::error::BrPlError::from_code(status);
             return Err(crate::error::Error::BrPl(err));

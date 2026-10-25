@@ -23,38 +23,11 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         Self { port }
     }
 
-    // Writes the provided data to the device
-    pub fn write(&mut self, data: &[u8]) -> Result<()> {
-        self.port.write_all(data)
-    }
-
-    // Reads the exact number of bytes required to fill the provided buffer
-    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        self.port.read_exact(buf)
-    }
-
     pub fn echo(&mut self, data: &[u8], size: usize) -> Result<()> {
-        self.write(data)?;
+        self.port.write_all(data)?;
         let mut buf = vec![0u8; size];
-        self.read(&mut buf)?;
+        self.port.read_exact(&mut buf)?;
         if buf == data { Ok(()) } else { Err(ProtocolError::DataMismatch.into()) }
-    }
-
-    fn read_u16_be(&mut self) -> Result<u16> {
-        let mut buf = [0u8; 2];
-        self.port.read_exact(&mut buf)?;
-        Ok(u16::from_be_bytes(buf))
-    }
-
-    fn read_u32_be(&mut self) -> Result<u32> {
-        let mut buf = [0u8; 4];
-        self.port.read_exact(&mut buf)?;
-        Ok(u32::from_be_bytes(buf))
-    }
-
-    fn write_u32_be(&mut self, value: u32) -> Result<()> {
-        let buf = value.to_be_bytes();
-        self.port.write_all(&buf)
     }
 
     /// Performs the handshake sequence with the preloader/bootrom.
@@ -161,11 +134,11 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         status_ok!(self);
 
-        self.write(da_data)?;
+        self.port.write_all(da_data)?;
 
         debug!("DA sent!");
 
-        let checksum = self.read_u16_be()?;
+        let checksum = self.port.read_u16_be()?;
         debug!("Received checksum: 0x{:04X}", checksum);
 
         status_ok!(self);
@@ -181,10 +154,10 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         status_ok!(self);
 
-        self.write(data)?;
+        self.port.write_all(data)?;
 
         // Checksum
-        self.read_u16_be()?;
+        self.port.read_u16_be()?;
 
         status_ok!(self);
 
@@ -195,7 +168,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
     pub fn get_hw_code(&mut self) -> Result<u16> {
         self.echo(&[Command::GetHwCode as u8], 1)?;
 
-        let hw_code = self.read_u16_be()?;
+        let hw_code = self.port.read_u16_be()?;
         status_ok!(self);
 
         debug!("HW Code: 0x{:04X}", hw_code);
@@ -206,9 +179,9 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
     pub fn get_hw_sw_ver(&mut self) -> Result<(u16, u16, u16)> {
         self.echo(&[Command::GetHwSwVer as u8], 1)?;
 
-        let hw_sub_code = self.read_u16_be()?;
-        let hw_ver = self.read_u16_be()?;
-        let sw_ver = self.read_u16_be()?;
+        let hw_sub_code = self.port.read_u16_be()?;
+        let hw_ver = self.port.read_u16_be()?;
+        let sw_ver = self.port.read_u16_be()?;
         status_ok!(self);
 
         debug!(
@@ -224,13 +197,13 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         self.echo(&[Command::GetSocId as u8], 1)?;
 
-        let length = self.read_u32_be()? as usize;
+        let length = self.port.read_u32_be()? as usize;
 
         if length > soc_id.len() {
             return Err(ProtocolError::InvalidResponseLength.into());
         }
 
-        self.read(&mut soc_id)?;
+        self.port.read_exact(&mut soc_id)?;
 
         status_ok!(self);
 
@@ -244,13 +217,13 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         let mut meid = [0u8; 16];
 
-        let length = self.read_u32_be()? as usize;
+        let length = self.port.read_u32_be()? as usize;
 
         if length != meid.len() {
             return Err(ProtocolError::InvalidResponseLength.into());
         }
 
-        self.read(&mut meid)?;
+        self.port.read_exact(&mut meid)?;
 
         status_ok!(self);
 
@@ -274,7 +247,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
     pub fn get_target_config(&mut self) -> Result<u32> {
         self.echo(&[Command::GetTargetConfig as u8], 1)?;
 
-        let config = self.read_u32_be()?;
+        let config = self.port.read_u32_be()?;
         status_ok!(self);
 
         debug!("Target config: 0x{:08X}", config);
@@ -285,8 +258,8 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
     pub fn get_pl_capabilities(&mut self) -> Result<u32> {
         self.echo(&[Command::GetPlCap as u8], 1)?;
 
-        let cap0 = self.read_u32_be()?;
-        let _cap1 = self.read_u32_be()?; // Reserved
+        let cap0 = self.port.read_u32_be()?;
+        let _cap1 = self.port.read_u32_be()?; // Reserved
 
         Ok(cap0)
     }
@@ -308,7 +281,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         status_ok!(self);
 
         for chunk in buf[..aligned].chunks_mut(4) {
-            self.read(chunk)?;
+            self.port.read_exact(chunk)?;
         }
 
         status_ok!(self);
@@ -346,12 +319,12 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         status_ok!(self);
 
         if let Some(data) = data {
-            self.write(data)?;
+            self.port.write_all(data)?;
             status_ok!(self);
             Ok(None)
         } else {
             let mut buffer = vec![0u8; length];
-            self.read(&mut buffer)?;
+            self.port.read_exact(&mut buffer)?;
             status_ok!(self);
             Ok(Some(buffer))
         }
@@ -369,9 +342,9 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         status_ok!(self);
 
-        let length = self.read_u32_be()? as usize;
+        let length = self.port.read_u32_be()? as usize;
         let mut buffer = vec![0u8; length];
-        self.read(&mut buffer)?;
+        self.port.read_exact(&mut buffer)?;
 
         debug!("Brom Sla challenge, length: {}", length);
 
@@ -386,8 +359,8 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         let signed = auth.sign(&req)?;
         let sig_len = signed.len() as u32;
 
-        self.write_u32_be(sig_len)?;
-        let resp_sig_len = self.read_u32_be()?;
+        self.port.write_u32_be(sig_len)?;
+        let resp_sig_len = self.port.read_u32_be()?;
 
         if sig_len != resp_sig_len {
             return Err(AuthError::InvalidSigLen(sig_len, resp_sig_len).into());
@@ -395,7 +368,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
 
         status_ok!(self);
 
-        self.write(&signed)?;
+        self.port.write_all(&signed)?;
 
         status_ok!(self);
 
@@ -412,15 +385,15 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         let mut name_bytes = [0u8; 64];
         name_bytes[..name.len()].copy_from_slice(name.as_bytes());
 
-        self.write(&name_bytes)?;
-        self.write_u32_be(data.len() as u32)?;
+        self.port.write_all(&name_bytes)?;
+        self.port.write_u32_be(data.len() as u32)?;
 
         status_ok!(self);
 
-        self.write(data)?;
+        self.port.write_all(data)?;
 
         let checksum = data.iter().fold(0u32, |acc, &x| acc.wrapping_add(x as u32)) & 0xFFFFFFFF;
-        self.write_u32_be(checksum)?;
+        self.port.write_u32_be(checksum)?;
 
         /* Thanks MTK for not adding a status check here */
 
@@ -435,7 +408,7 @@ impl<'a, P: MtkPort> PlProtocol<'a, P> {
         let mut name_bytes = [0u8; 64];
         name_bytes[..name.len()].copy_from_slice(name.as_bytes());
 
-        self.write(&name_bytes)?;
+        self.port.write_all(&name_bytes)?;
 
         status_ok!(self);
 
