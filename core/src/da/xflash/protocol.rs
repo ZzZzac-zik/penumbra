@@ -14,7 +14,7 @@ use crate::activity::{Activity, DeviceActivity};
 use crate::da::DownloadProtocolExt;
 #[cfg(feature = "exploits")]
 use crate::da::extensions;
-use crate::da::protocol::{DaProtocolParams, DataType, NOOP_PROGRESS, PacketHeader};
+use crate::da::protocol::{DaProtocolParams, DataType, PacketHeader};
 use crate::da::storage::{get_aux_gpt_parts, get_gpt_parts};
 use crate::da::xflash::cmd::Cmd;
 #[cfg(feature = "exploits")]
@@ -911,6 +911,8 @@ impl DownloadProtocolExt for XFlash {
         state: hacc::LockState,
     ) -> Result<()> {
         use extensions::SecCfgAlgo;
+
+        use crate::da::NOOP_PROGRESS;
 
         let section = self
             .get_storage(port)

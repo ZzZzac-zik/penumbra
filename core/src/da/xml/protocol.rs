@@ -53,9 +53,7 @@ use crate::da::xml::{
     flash,
 };
 use crate::da::{DaLogLevel, DaProtocolParams};
-#[cfg(feature = "exploits")]
-use crate::error::PenumbraError;
-use crate::error::{AuthError, ProtocolError, XmlError, XmlErrorKind};
+use crate::error::{AuthError, PenumbraError, ProtocolError, XmlError, XmlErrorKind};
 #[cfg(feature = "exploits")]
 use crate::exploit::{Carbonara, HeapBait, Unfused};
 use crate::port::{MAX_TIMEOUT, MIN_TIMEOUT, MtkPort};
