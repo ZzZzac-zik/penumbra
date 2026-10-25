@@ -91,7 +91,6 @@ use crate::{
     StorageKind,
     StorageType,
     VERSION,
-    exploit,
 };
 
 pub struct Xml {

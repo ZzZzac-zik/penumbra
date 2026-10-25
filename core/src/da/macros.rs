@@ -1,4 +1,7 @@
-#[macro_export]
+/*
+    SPDX-License-Identifier: AGPL-3.0-or-later
+    SPDX-FileCopyrightText: 2026 Shomy
+*/
 macro_rules! exploit {
     ($exploit:ty, $proto:expr, $port:expr, $da:expr) => {{
         #[cfg(feature = "exploits")]
@@ -18,3 +21,4 @@ macro_rules! exploit {
         }
     }};
 }
+

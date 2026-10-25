@@ -51,7 +51,7 @@ use crate::traits::{
 };
 #[cfg(feature = "exploits")]
 use crate::utils::hash::{HashType, hash};
-use crate::{AuthManager, DeviceLog, Error, Result, SignData, SignPurpose, SignRequest, exploit};
+use crate::{AuthManager, DeviceLog, Error, Result, SignData, SignPurpose, SignRequest};
 
 pub struct XFlash<'a> {
     pub pl: Option<Preloader<'a>>,

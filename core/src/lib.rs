@@ -12,7 +12,6 @@ pub mod error;
 #[cfg(feature = "exploits")]
 pub mod exploit;
 mod log_buffer;
-pub mod macros;
 pub mod port;
 mod preloader;
 pub mod storage;
