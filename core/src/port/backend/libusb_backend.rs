@@ -82,7 +82,7 @@ impl LibUsbMTKPort {
         const CDC_INTERFACE: u16 = 1;
         const SET_LINE_CODING: u8 = 0x20;
         const SET_CONTROL_LINE_STATE: u8 = 0x22;
-        const LINE_CODING: [u8; 7] = [0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08];
+        const LINE_CODING: [u8; 7] = [0x00, 0x10, 0x0E, 0x00, 0x00, 0x00, 0x08];
         const CONTROL_LINE_STATE: u16 = 0x03;
 
         let request_type =
