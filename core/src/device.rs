@@ -225,7 +225,7 @@ impl<'a, P: MtkPort> Device<'a, P> {
         // TODO: Return a target config struct instead.
         let target_config = pl.get_target_config()?;
         let hw_code = pl.get_hw_code()?;
-        let (hw_subcode, ..) = pl.get_hw_sw_ver()?;
+        let (hw_subcode, hw_ver, sw_ver) = pl.get_hw_sw_ver()?;
         // Some old devices don't support this command.
         let soc_id = pl.get_soc_id().unwrap_or_default();
         // MTK removed MEID on newer preloaders.
@@ -253,6 +253,8 @@ impl<'a, P: MtkPort> Device<'a, P> {
             bootctrl: None,
             hw_code,
             hw_subcode,
+            hw_ver,
+            sw_ver,
             target_config,
         };
 
@@ -398,11 +400,19 @@ impl<'a, P: MtkPort> Device<'a, P> {
     fn get_da_entry<'da>(da: Option<&'da Da<'da>>, devinfo: &DevInfo) -> Result<DaEntry<'da>> {
         let hw_code = devinfo.chip().map_or_else(|| devinfo.hw_code(), |c| c.to_dacode());
         let hw_subcode = devinfo.hw_subcode();
+        let hw_ver = devinfo.hw_ver();
+        let sw_ver = devinfo.sw_ver();
 
         let entry = da
             .ok_or(PenumbraError::DaNotProvided)?
             .entries()
-            .find(|entry| entry.hw_code() == hw_code && entry.hw_sub_code() == hw_subcode)
+            .filter(|e| {
+                // Legacy DAs might have hw subcode set to 0
+                e.hw_code() == hw_code && (e.hw_sub_code() == hw_subcode || e.hw_sub_code() == 0)
+            })
+            .min_by_key(|e| {
+                (e.hw_sub_code() != hw_subcode, e.hw_ver() != hw_ver, e.sw_ver() != sw_ver)
+            })
             .ok_or(PenumbraError::NoCompatibleDa(hw_code, hw_subcode))?;
 
         Ok(entry)

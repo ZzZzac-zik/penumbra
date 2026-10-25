@@ -22,6 +22,8 @@ pub struct DevInfoData {
     pub meid: [u8; 16],
     pub hw_code: u16,
     pub hw_subcode: u16,
+    pub hw_ver: u16,
+    pub sw_ver: u16,
     pub chip: Option<SoC>,
     pub partitions: Vec<Partition>,
     pub bootctrl: Option<BootControl>,
@@ -63,6 +65,22 @@ impl DevInfo {
 
     pub fn set_hw_subcode(&self, hw_subcode: u16) {
         self.inner.borrow_mut().hw_subcode = hw_subcode;
+    }
+
+    pub fn hw_ver(&self) -> u16 {
+        self.inner.borrow().hw_ver
+    }
+
+    pub fn set_hw_ver(&self, hw_ver: u16) {
+        self.inner.borrow_mut().hw_ver = hw_ver;
+    }
+
+    pub fn sw_ver(&self) -> u16 {
+        self.inner.borrow().sw_ver
+    }
+
+    pub fn set_sw_ver(&self, sw_ver: u16) {
+        self.inner.borrow_mut().sw_ver = sw_ver;
     }
 
     pub fn chip(&self) -> Option<SoC> {
