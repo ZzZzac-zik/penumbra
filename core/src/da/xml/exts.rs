@@ -7,6 +7,7 @@ use acon::{MMIO, SoC};
 use hacc::DaEntry;
 use log::{debug, info, warn};
 use penumbra_macros::XmlCommand;
+use std::io::Read;
 use wincode::SchemaWrite;
 
 use crate::da::extensions::{KeyDeriveId, KeyDeriveParams, KeySize, SejParams};

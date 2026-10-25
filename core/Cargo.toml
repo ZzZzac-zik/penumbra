@@ -34,10 +34,11 @@ uuid = { version = "1.23.0", features = ["v4"] }
 wincode = { version = "0.5.1", features = ["derive"] }
 penumbra-macros = { version = "0.1.0", path = "penumbra-macros" }
 hacc = { git = "https://github.com/shomykohai/hacc", version = "0.1.0", features = ["alloc", "crc32"] }
-acon = { git = "https://github.com/shomykohai/acon", version = "0.1.0" }
+acon = { git = "https://github.com/shomykohai/acon", branch = "stable", version = "0.1.0" }
 memchr = { version = "2.8.1", default-features = false }
 simple-xml = "0.1.10"
 rust-yaml = "1.1.0"
+trait-set = "0.5.0"
 
 [features]
 default = ["nusb", "exploits", "localslakeyring", "libusb", "serial"]

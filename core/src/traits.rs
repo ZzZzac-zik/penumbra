@@ -3,12 +3,15 @@
     SPDX-FileCopyrightText: 2026 Shomy
 */
 pub use penumbra_macros::{FromBytes, ToBytes};
+use trait_set::trait_set;
 
-pub trait ProgressCallback = FnMut(u64, u64) + Send;
-pub trait Reader = std::io::Read + Send;
-pub trait Writer = std::io::Write + Send;
-pub trait ReaderSource<R: Reader> = FnMut(&str) -> crate::Result<(R, u64)> + Send;
-pub trait WriterSink<W: Writer> = FnMut(&str) -> crate::Result<W> + Send;
+trait_set! {
+    pub trait ProgressCallback = FnMut(u64, u64) + Send;
+    pub trait Reader = std::io::Read + Send;
+    pub trait Writer = std::io::Write + Send;
+    pub trait ReaderSource<R: Reader> = FnMut(&str) -> crate::Result<(R, u64)> + Send;
+    pub trait WriterSink<W: Writer> = FnMut(&str) -> crate::Result<W> + Send;
+}
 
 pub trait ToBytes {
     const SIZE: usize;
