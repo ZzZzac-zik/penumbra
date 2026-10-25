@@ -69,6 +69,8 @@ pub fn setup_device<'a>(
             chip,
             hw_code: state.hw_code,
             hw_subcode: state.hw_subcode,
+            hw_ver: state.hw_ver,
+            sw_ver: state.sw_ver,
             partitions: vec![],
             target_config: state.target_config,
             bootctrl: None,

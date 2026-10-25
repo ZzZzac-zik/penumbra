@@ -14,6 +14,8 @@ pub struct PersistedDeviceState {
     pub meid: [u8; 16],
     pub hw_code: u16,
     pub hw_subcode: u16,
+    pub hw_ver: u16,
+    pub sw_ver: u16,
     pub target_config: u32,
     pub connection_type: u8,
     pub flash_mode: u8,
