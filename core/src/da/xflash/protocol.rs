@@ -385,6 +385,8 @@ impl DownloadProtocol for XFlash {
         exploit!(Unfused, self, port, da);
         exploit!(Linecode, self, port, da);
 
+        dump_preloader!(self, port, da.da1().addr());
+
         self.activity.set(Activity::UploadingDa);
         self.upload_stage1(port, da)?;
 
