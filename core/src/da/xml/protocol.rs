@@ -611,7 +611,18 @@ impl DownloadProtocol for Xml {
 
         self.upload_stage1(port, da)?;
 
-        exploit!(Carbonara, self, port, da);
+        // Carbonara's DA1 check is a heuristic and can report success on a DA
+        // that it did not actually patch. That would set `patched` and turn
+        // the `exploit!(HeapBait, ...)` call below into a no-op, so prefer
+        // HeapBait whenever the DA2 itself matches it.
+        #[cfg(feature = "exploits")]
+        let heapbait_vulnerable = HeapBait.is_vulnerable(da.da2_code());
+        #[cfg(not(feature = "exploits"))]
+        let heapbait_vulnerable = false;
+
+        if !heapbait_vulnerable {
+            exploit!(Carbonara, self, port, da);
+        }
 
         let da2_addr = da.da2().addr();
         let da2_code = da.da2_code();
